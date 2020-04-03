@@ -11,8 +11,6 @@ __all__ = [
 
 
 class ListModelMixin(object):
-    streaming = True
-
     def get(self, request, *args, **kwargs):
         """
         Returns a list of objects.

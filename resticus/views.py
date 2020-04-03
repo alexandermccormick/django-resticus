@@ -63,7 +63,8 @@ class Endpoint(View):
     permission_classes = api_settings.DEFAULT_PERMISSION_CLASSES
     data_parsers = api_settings.DATA_PARSERS
 
-    streaming = False
+    # Set to True/False to explicitly set streaming on the view
+    streaming = None
 
     def parse_body(self, request):
         if request.method not in ["POST", "PUT", "PATCH"]:
@@ -180,7 +181,7 @@ class Endpoint(View):
             response = self.server_error(err)
 
         if not isinstance(response, (HttpResponse, StreamingHttpResponse)):
-            if self.streaming:
+            if self.is_streaming():
                 response = self.streaming_response(response)
             else:
                 response = http.Http200(response)
@@ -208,6 +209,17 @@ class Endpoint(View):
 
     def api_exception(self, err):
         return err.response
+
+    def is_streaming(self):
+        if self.streaming is not None:
+            return self.streaming
+
+        # See if any of the base classes are set to streaming
+        for cls in self.__class__.__mro__:
+            path = f'{cls.__module__}.{cls.__name__}'
+            if path in api_settings.STREAMING:
+                return True
+        return False
 
     def streaming_response(self, data, **kwargs):
         kwargs.setdefault("status", 200)

@@ -22,6 +22,12 @@ DEFAULTS = {
         "multipart/form-data": "resticus.parsers.parse_multipart",
         "text/plain": "resticus.parsers.parse_plain_text",
     },
+
+    # List of view class names that will stream the JSON response
+    'STREAMING': [
+        'resticus.mixins.ListModelMixin',
+    ],
+
     # Pagination
     "PAGINATE": True,
     "PAGE_SIZE": 100,
