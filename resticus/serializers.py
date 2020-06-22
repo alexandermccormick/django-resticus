@@ -1,4 +1,5 @@
 import builtins
+import inspect
 import json
 
 from django.contrib.gis.geos import GEOSGeometry
@@ -58,7 +59,10 @@ def serialize_model(
         elif isinstance(field, tuple):
             key, value = field
             if callable(value):
-                data[key] = value(instance)
+                if inspect.isclass(value) and issubclass(value, Serializer):
+                    data[key] = value(getattr(instance, key)).serialize()
+                else:
+                    data[key] = value(instance)
             elif isinstance(value, dict):
                 try:
                     data[key] = serialize(getattr(instance, key), **value)
@@ -93,11 +97,11 @@ def serialize(
         object being serialized as the argument, and the function result will
         be included in the result, with the key being the first tuple element
       * a tuple, where the first element is a related model attribute name
-        and the second is a dictionary - related model instance(s) will
-        be serialized recursively and added as sub-object(s) to the object
-        being serialized; the dictionary may specify `fields`, `include`,
-        `exclude` and `fixup` options for the related models following the
-        same semantics as for the object being serialized.
+        and the second is a dictionary or `Serializer` class - related model
+        instance(s) will be serialized recursively and added as sub-object(s)
+        to the object being serialized; the dictionary may specify `fields`,
+        `include`, `exclude` and `fixup` options for the related models following
+        the same semantics as for the object being serialized.
     The `fixup` argument, if defined, is a function taking two arguments, the
     object being serialized, and the serialization result dict, and returning
     the modified serialization result. It's useful in cases where it's
@@ -117,7 +121,8 @@ def serialize(
                     'to',     # job.to,
                     ('duration', lambda job: job.to - job.from),
                 ]
-            ))
+            )),
+            ('profile', ProfileSerializer),
         ])
     Returns: a dict (if a single model instance was serialized) or a list
     od dicts (if a QuerySet was serialized) with the serialized data. The
