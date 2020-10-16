@@ -6,6 +6,7 @@ from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist
 from django.urls import URLPattern, URLResolver
 
 from . import mixins
+from .serializers import Serializer
 
 
 class SchemaGenerator(object):
@@ -142,27 +143,41 @@ class SchemaGenerator(object):
                                 related_obj = view_class.model._meta.get_field(
                                     name
                                 ).related_model
-                                fields = field[1].get("fields")
+                                if isinstance(field[1], dict):
+                                    fields = field[1].get("fields")
+                                elif issubclass(field[1], Serializer):
+                                    fields = field[1].fields
+                                else:
+                                    fields = None
                                 if fields:
                                     properties = {}
+
                                     for f in fields:
-                                        try:
-                                            related_name = related_obj._meta.get_field(
-                                                f
-                                            ).name
-                                            related_type = related_obj._meta.get_field(
-                                                f
-                                            ).get_internal_type()
-                                            if related_type in self.fields_dict:
-                                                properties.update(
-                                                    {
-                                                        related_name: self.fields_dict[
-                                                            related_type
-                                                        ]
-                                                    }
-                                                )
-                                        except FieldDoesNotExist:
-                                            continue
+                                        if isinstance(f, tuple) and isinstance(
+                                            f[1], dict
+                                        ):
+                                            field_list = f[1].get("fields", [])
+                                        else:
+                                            field_list = [f]
+
+                                        for _f in field_list:
+                                            try:
+                                                related_name = related_obj._meta.get_field(
+                                                    _f
+                                                ).name
+                                                related_type = related_obj._meta.get_field(
+                                                    _f
+                                                ).get_internal_type()
+                                                if related_type in self.fields_dict:
+                                                    properties.update(
+                                                        {
+                                                            related_name: self.fields_dict[
+                                                                related_type
+                                                            ]
+                                                        }
+                                                    )
+                                            except FieldDoesNotExist:
+                                                continue
                                 result = {
                                     name: {"type": "object", "properties": properties}
                                 }
@@ -188,16 +203,15 @@ class SchemaGenerator(object):
                 "schema": {"type": "object", "properties": {}},
             }
 
-            for field in callback.view_class.form_class._meta.fields:
-                field_type = callback.view_class.form_class._meta.model._meta.get_field(
-                    field
-                ).get_internal_type()
-                if field_type in self.fields_dict:
-                    form_param["schema"]["properties"].update(
-                        {field: self.fields_dict[field_type]}
-                    )
-                else:
-                    continue
+            if hasattr(callback.view_class.form_class, "_meta"):
+                for field in callback.view_class.form_class._meta.fields:
+                    field_type = callback.view_class.form_class._meta.model._meta.get_field(
+                        field
+                    ).get_internal_type()
+                    if field_type in self.fields_dict:
+                        form_param["schema"]["properties"].update(
+                            {field: self.fields_dict[field_type]}
+                        )
 
             params_with_form.append(form_param)
         return params_with_form
