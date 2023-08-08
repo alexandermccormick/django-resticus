@@ -7,6 +7,13 @@ except ImportError:
 
 try:
     # Django 4
+    from django.utils.encoding import force_str as force_text
+except ImportError:
+    # Django 3
+    from django.utils.encoding import force_text
+
+try:
+    # Django 4
     from django.utils.encoding import smart_str as smart_text
 except ImportError:
     # Django 3
