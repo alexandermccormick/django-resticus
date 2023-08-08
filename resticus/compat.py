@@ -5,10 +5,11 @@ try:
 except ImportError:
     from django.utils import importlib
 
-
 try:
-    from django.utils.encoding import smart_text
+    # Django 4
+    from django.utils.encoding import smart_str as smart_text
 except ImportError:
+    # Django 3
     from django.utils.encoding import smart_unicode as smart_text
 
 
