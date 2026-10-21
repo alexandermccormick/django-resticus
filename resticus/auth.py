@@ -13,7 +13,13 @@ from .http import HTTP_HEADER_ENCODING, Http200
 from .settings import api_settings
 
 
-__all__ = ["SessionAuth", "BasicHttpAuth", "SessionAuthEndpoint", "login_required"]
+__all__ = [
+    "SessionAuth",
+    "BasicHttpAuth",
+    "SessionAuthEndpoint",
+    "enforce_csrf",
+    "login_required",
+]
 
 
 def get_authorization_header(request):
@@ -34,6 +40,18 @@ class CSRFCheck(CsrfViewMiddleware):
 
     def _reject(self, request, reason):
         return reason
+
+
+def enforce_csrf(request):
+    """
+    Run Django's CSRF check on a request. Safe methods pass; an unsafe
+    request without a valid CSRF token raises Forbidden.
+    """
+    check = CSRFCheck()
+    check.process_request(request)
+    reason = check.process_view(request, None, (), {})
+    if reason:
+        raise exceptions.Forbidden(_("CSRF Failed: {0}").format(reason))
 
 
 class BaseAuth(object):
@@ -58,11 +76,7 @@ class SessionAuth(BaseAuth):
         return user
 
     def enforce_csrf(self, request):
-        check = CSRFCheck()
-        check.process_request(request)
-        reason = check.process_view(request, None, (), {})
-        if reason:
-            raise exceptions.Forbidden(_("CSRF Failed: {0}").format(reason))
+        enforce_csrf(request)
 
 
 class BasicHttpAuth(BaseAuth):

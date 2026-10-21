@@ -37,6 +37,11 @@ def parse_form_encoded(request, **extra):
 
 
 def parse_multipart(request, **extra):
+    if hasattr(request, "_files"):
+        # Django already parsed the upload (e.g. the CSRF check read
+        # request.POST), and it can't be parsed twice.
+        return (request.POST, request.FILES)
+
     if hasattr(request, "_body"):
         # Use already read data
         data = BytesIO(request._body)
