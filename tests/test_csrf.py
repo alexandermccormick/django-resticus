@@ -1,6 +1,7 @@
 import base64
 import json
 
+from django.contrib.auth.signals import user_login_failed
 from django.test import RequestFactory, TestCase
 from django.test.client import encode_multipart
 from django.urls import reverse
@@ -124,6 +125,21 @@ class TestSessionCsrf(TestCase):
         self.sign_in()
         r = self.client.post('csrf_probe', extra={'HTTP_AUTHORIZATION': basic('baz', 'qux')})
         self.assertUsername(r, 'foo')
+
+    def test_session_get_skips_credential_lookup(self):
+        failed = []
+
+        def record(sender, **kwargs):
+            failed.append(kwargs)
+
+        user_login_failed.connect(record)
+        try:
+            self.sign_in()
+            r = self.client.get('csrf_probe', extra={'HTTP_AUTHORIZATION': basic('baz', 'wrong')})
+        finally:
+            user_login_failed.disconnect(record)
+        self.assertUsername(r, 'foo')
+        self.assertEqual(failed, [])
 
     def test_anonymous_post_unaffected(self):
         r = self.client.post('echo_view')
