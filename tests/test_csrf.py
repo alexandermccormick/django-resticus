@@ -4,7 +4,6 @@ import json
 from django.contrib.auth.signals import user_login_failed
 from django.test import RequestFactory, TestCase
 from django.test.client import encode_multipart
-from django.urls import reverse
 
 from resticus.auth import TokenAuth
 from resticus.parsers import parse_multipart
@@ -54,8 +53,7 @@ class TestSessionCsrf(TestCase):
     def test_session_put_patch_delete_without_csrf_rejected(self):
         self.sign_in()
         self.assertCsrfRejected(self.client.put('csrf_probe'))
-        self.assertCsrfRejected(
-            ApiClient.process(super(ApiClient, self.client).patch(reverse('csrf_probe'))))
+        self.assertCsrfRejected(self.client.patch('csrf_probe'))
         self.assertCsrfRejected(self.client.delete('csrf_probe'))
 
     def test_session_post_with_csrf_accepted(self):
