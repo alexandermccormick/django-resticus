@@ -121,6 +121,16 @@ class TestSessionCsrf(TestCase):
         r = self.client.post('csrf_probe', extra={'HTTP_AUTHORIZATION': 'Token'})
         self.assertCsrfRejected(r)
 
+    def test_token_only_undecodable_key_rejected(self):
+        r = self.client.post('csrf_probe', extra={'HTTP_AUTHORIZATION': 'Token \xff\xfe'})
+        self.assertEqual(r.status_code, 401)
+
+    def test_session_and_undecodable_token_checks_csrf(self):
+        self.sign_in()
+        r = self.client.post('csrf_probe', extra=dict(
+            self.with_csrf(), HTTP_AUTHORIZATION='Token \xff\xfe'))
+        self.assertUsername(r, 'foo')
+
     def test_session_and_valid_basic_skips_csrf(self):
         self.sign_in()
         r = self.client.post('csrf_probe', extra={'HTTP_AUTHORIZATION': basic('baz', 'qux')})

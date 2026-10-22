@@ -164,7 +164,7 @@ class TokenAuth(BaseAuth):
         encoding = request.encoding or settings.DEFAULT_CHARSET
         try:
             return User.objects.get(api_token__key=key.decode(encoding))
-        except User.DoesNotExist:
+        except (User.DoesNotExist, UnicodeDecodeError):
             raise exceptions.AuthenticationFailed(_("Invalid token."))
 
     def authenticate_credentials(self, request, key):
