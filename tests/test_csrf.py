@@ -1,10 +1,12 @@
 import base64
 import json
 
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
+from django.test.client import encode_multipart
 from django.urls import reverse
 
 from resticus.auth import TokenAuth
+from resticus.parsers import parse_multipart
 from resticus.compat import get_user_model
 from .client import ApiClient
 
@@ -80,6 +82,12 @@ class TestSessionCsrf(TestCase):
         self.assertUsername(r, 'foo')
         self.assertEqual(r.json['name'], 'x')
 
+    def test_session_malformed_multipart_with_csrf_is_bad_request(self):
+        self.sign_in()
+        r = self.client.post('csrf_probe', data='garbage',
+            content_type='multipart/form-data; boundary=', extra=self.with_csrf())
+        self.assertEqual(r.status_code, 400)
+
     def test_session_post_with_mismatched_csrf_rejected(self):
         self.sign_in()
         r = self.client.post('csrf_probe', extra=self.with_csrf(header='b' * 32))
@@ -125,3 +133,13 @@ class TestSessionCsrf(TestCase):
         self.sign_in()
         r = self.client.post('token_auth', data={'username': 'foo', 'password': 'bar'})
         self.assertCsrfRejected(r)
+
+
+class TestParseMultipart(TestCase):
+    def test_put_body_parsed_even_if_post_was_read(self):
+        """Django leaves request.POST empty for non-POST methods; don't reuse it."""
+        request = RequestFactory().put('/', data=encode_multipart('BoUnDaRy', {'name': 'x'}),
+            content_type='multipart/form-data; boundary=BoUnDaRy')
+        request.POST  # something read it first, e.g. middleware
+        data, files = parse_multipart(request)
+        self.assertEqual(data.get('name'), 'x')

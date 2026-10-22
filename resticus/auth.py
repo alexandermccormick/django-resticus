@@ -2,7 +2,8 @@ import base64
 
 from django.conf import settings
 from django.contrib import auth
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, TooManyFieldsSent, TooManyFilesSent
+from django.http.multipartparser import MultiPartParserError
 from django.middleware.csrf import CsrfViewMiddleware
 from django.utils.encoding import DjangoUnicodeDecodeError
 from django.utils.translation import gettext as _
@@ -49,7 +50,11 @@ def enforce_csrf(request):
     """
     check = CSRFCheck()
     check.process_request(request)
-    reason = check.process_view(request, None, (), {})
+    try:
+        # For POST this reads request.POST, which parses the body.
+        reason = check.process_view(request, None, (), {})
+    except (MultiPartParserError, TooManyFieldsSent, TooManyFilesSent):
+        raise exceptions.ParseError()
     if reason:
         raise exceptions.Forbidden(_("CSRF Failed: {0}").format(reason))
 
