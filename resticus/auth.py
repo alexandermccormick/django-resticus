@@ -60,6 +60,17 @@ def enforce_csrf(request):
 
 
 class BaseAuth(object):
+    """
+    Base class for authenticators.
+
+    For a user the session already signed in, Endpoint skips the CSRF check
+    when any authenticator other than SessionAuth accepts the request. So
+    only accept credentials a browser doesn't send on its own (such as an
+    Authorization header). An authenticator that reads a cookie should
+    subclass SessionAuth and call enforce_csrf(request) in authenticate(),
+    or cookie-only requests skip the CSRF check.
+    """
+
     def authenticate(self, request):
         pass
 
